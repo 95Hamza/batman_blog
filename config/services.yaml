@@ -6,6 +6,8 @@
 parameters:
 
     app.article.last_article_number_on_home: 5
+    google_recaptcha.private_key: '%env(GOOGLE_RECAPTCHA_PRIVATE_KEY)%'
+
 services:
     # default configuration for services in *this* file
     _defaults:
