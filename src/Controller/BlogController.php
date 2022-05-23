@@ -3,6 +3,8 @@
 namespace App\Controller;
 
 use App\Entity\Article;
+use App\Entity\Comment;
+use App\Form\AddCommentFormType;
 use App\Form\NewArticleFormType;
 use Knp\Component\Pager\PaginatorInterface;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\IsGranted;
@@ -72,11 +74,54 @@ class BlogController extends AbstractController
      */
     #[Route('/publication/{id}/{slug}/', name: 'publication_view')]
     #[ParamConverter('article', options: [ 'mapping' => [ 'id' => 'id', 'slug' => 'slug'] ])]
-    public function publicationView(Article $article): Response
+    public function publicationView(Article $article, Request $request, ManagerRegistry $doctrine): Response
     {
+
+        // si l'utilisateur n'est pas connecté, appel direct de la vue en lui envoyant seulement l'article à afficher
+        // On fait ça pour éviter que le traitement du formulaire ne se faire que la personne n'est pas connectée
+        if(!$this->getUser()){
+
+            return $this->render('blog/publication_view.html.twig', [
+                'article' => $article,
+
+            ]);
+
+        }
+
+        $comment = new comment();
+
+        $form = $this->createForm(AddCommentFormType::class, $comment);
+
+        $form->handleRequest($request);
+
+        // Si le formulaire est envoyé et sans erreur
+        if($form->isSubmitted() && $form->isValid() ){
+
+            $comment
+                ->setPublicationDate(new \DateTime() )
+                ->setAuthor($this->getUser() )
+                ->setArticle( $article )
+            ;
+
+            $em = $doctrine->getManager();
+            $em->persist( $comment );
+            $em->flush();
+
+            $this->addFlash('success', 'Votre commentaire a été publié avec succés !');
+
+            // Réinitialisation des variables $form et $correct pour un nouveau formulaire vierge
+            unset($comment);
+            unset($form);
+
+            $comment = new Comment();
+            $form = $this->createForm(AddCommentFormType::class, $comment);
+            
+        }
 
         return $this->render('blog/publication_view.html.twig', [
             'article' => $article,
+            'form' => $form->createView(),
+
         ]);
     }
 
